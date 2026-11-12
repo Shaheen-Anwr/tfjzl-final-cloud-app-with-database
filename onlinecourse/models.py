@@ -99,11 +99,11 @@ class Enrollment(models.Model):
 # A course has many questions; each question has a grade (points)
 class Question(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    content = models.CharField(max_length=200)
+    question_text = models.CharField(max_length=200)
     grade = models.IntegerField(default=50)
 
     def __str__(self):
-        return "Question: " + self.content
+        return "Question: " + self.question_text
 
     # A question is answered correctly when the learner selected
     # exactly the correct choices (all correct ones, and no wrong ones)
@@ -117,11 +117,11 @@ class Question(models.Model):
 # A question has many choices; some of them are correct
 class Choice(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    content = models.CharField(max_length=200)
+    choice_text = models.CharField(max_length=200)
     is_correct = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.content
+        return self.choice_text
 
 
 # Submission model
@@ -131,3 +131,7 @@ class Choice(models.Model):
 class Submission(models.Model):
     enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
     choices = models.ManyToManyField(Choice)
+
+    def __str__(self):
+        return "Submission " + str(self.id) + " by " + self.enrollment.user.username + \
+               " for " + self.enrollment.course.name
