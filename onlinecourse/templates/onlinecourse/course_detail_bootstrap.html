@@ -51,6 +51,43 @@
                 {% endfor %}
             </div>
             <!-- Course detail template changes go here -->
+            {% if user.is_authenticated %}
+            <div class="mt-3">
+                <button class="btn btn-primary btn-block" data-toggle="collapse" data-target="#exam" aria-expanded="false" aria-controls="exam">
+                    Start Exam
+                </button>
+                <div id="exam" class="collapse">
+                    <form id="questionform" action="{% url 'onlinecourse:submit' course.id %}" method="post">
+                        {% csrf_token %}
+                        {% for question in course.question_set.all %}
+                        <div class="card mt-1">
+                            <div class="card-header">
+                                <h5>{{ question.content }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="form-group">
+                                    {% for choice in question.choice_set.all %}
+                                    <div class="form-check">
+                                        <label class="form-check-label">
+                                            <input type="checkbox" name="choice_{{ choice.id }}"
+                                                   class="form-check-input" id="{{ choice.id }}"
+                                                   value="{{ choice.id }}">{{ choice.content }}
+                                        </label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="alert alert-info mt-1">This course has no exam questions yet.</div>
+                        {% endfor %}
+                        <input class="btn btn-success btn-block mt-2" type="submit" value="Submit">
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info mt-3">Log in to take the exam for this course.</div>
+            {% endif %}
     </div>
 </body>
 </html>
