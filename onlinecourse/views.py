@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 # <HINT> Import any new Models here
-from .models import Course, Enrollment
+from .models import Course, Enrollment, Question, Choice, Submission
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -110,7 +110,30 @@ def enroll(request, course_id):
          # Collect the selected choices from exam form
          # Add each selected choice object to the submission object
          # Redirect to show_exam_result with the submission id
-#def submit(request, course_id):
+def submit(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    user = request.user
+
+    # Only logged-in users can take the exam
+    if not user.is_authenticated:
+        return redirect('onlinecourse:login')
+
+    # Get the enrollment created when the user enrolled in the course
+    # (enroll the user first if they have not enrolled yet)
+    enrollment, created = Enrollment.objects.get_or_create(user=user, course=course, defaults={'mode': 'honor'})
+    if created:
+        course.total_enrollment += 1
+        course.save()
+
+    # Create a submission object referring to the enrollment
+    submission = Submission.objects.create(enrollment=enrollment)
+
+    # Collect the selected choices from the exam form and add them to the submission
+    selected_ids = extract_answers(request)
+    submission.choices.set(Choice.objects.filter(id__in=selected_ids, question__course=course))
+
+    # Redirect to show_exam_result with the submission id
+    return HttpResponseRedirect(reverse(viewname='onlinecourse:exam_result', args=(course.id, submission.id)))
 
 
 # An example method to collect the selected choices from the exam form from the request object
@@ -130,7 +153,32 @@ def extract_answers(request):
         # Get the selected choice ids from the submission record
         # For each selected choice, check if it is a correct answer or not
         # Calculate the total score
-#def show_exam_result(request, course_id, submission_id):
+def show_exam_result(request, course_id, submission_id):
+    context = {}
+    # Get course and submission based on their ids
+    course = get_object_or_404(Course, pk=course_id)
+    submission = get_object_or_404(Submission, pk=submission_id, enrollment__course=course)
+
+    # Get the selected choice ids from the submission record
+    selected_choices = submission.choices.all()
+    selected_ids = [choice.id for choice in selected_choices]
+
+    # For each question, check if the learner chose the correct answers,
+    # and add up the points of the correctly answered questions
+    total_score = 0
+    max_score = 0
+    for question in course.question_set.all():
+        max_score += question.grade
+        if question.is_get_score(selected_ids):
+            total_score += question.grade
+
+    # Turn the score into a percentage (0-100)
+    grade = round(total_score / max_score * 100) if max_score > 0 else 0
+
+    context['course'] = course
+    context['grade'] = grade
+    context['choices'] = selected_choices
+    return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
 
 
 
